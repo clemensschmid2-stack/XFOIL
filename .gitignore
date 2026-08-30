@@ -1,0 +1,19 @@
+# macOS archive metadata
+.DS_Store
+._*
+
+# Fortran/C compiler and linker products
+*.o
+*.obj
+*.mod
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Common XFOIL/plot utility binaries
+/bin/xfoil
+/bin/pplot
+/bin/pxplot
