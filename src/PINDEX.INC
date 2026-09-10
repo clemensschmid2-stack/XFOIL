@@ -86,7 +86,7 @@ C
      & 'F7.3  ',    !    Ncrit
      & 'F9.4  ',    !    Xtrip
      & 'F9.4  ',    !    Xtr
-     & 'F9.4  '  /  !    Itr
+     & 'F10.4 '  /  !    Itr (space before four-digit panel indices)
 
       DATA CPOLNNAME /
      & 'Cx_n ',

@@ -20,12 +20,17 @@ C
 C---- include polar variable indexing parameters
       INCLUDE 'PINDEX.INC'
 C
-      PARAMETER (IQX=601, IPX=5, ISX=2)
+C  Support 1000 surface nodes (PANE reserves six slots).
+      PARAMETER (IQX=1006, IPX=5, ISX=2)
       PARAMETER (IWX=IQX/8+2)
       PARAMETER (IBX=4*IQX)
       PARAMETER (IZX=IQX+IWX)
-      PARAMETER (IVX=IQX/2 + IWX + 50)
-      PARAMETER (NAX=800,NPX=20,NFX=128)
+C  A displaced stagnation point can put most surface nodes on one BL side.
+C  Allocate a full surface plus wake per side, not half a surface.
+      PARAMETER (IVX=IZX)
+C  40001 points cover -20 through +20 degrees at 0.001 degree spacing.
+C  Keep headroom for repeated endpoints and additional operating points.
+      PARAMETER (NAX=50000,NPX=20,NFX=128)
       PARAMETER (NTX=2*IBX)
       CHARACTER*32 LABREF
       CHARACTER*64 FNAME, PFNAME, PFNAMX, ONAME, PREFIX, OCNAME

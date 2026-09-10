@@ -247,6 +247,7 @@ C
 
 
       subroutine PLNUMBABS(XC,YC,CHX,FPN,ANGLE,ndig)
+      USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
 C----------------------------------------------------------------
 C     Plots a floating-point number as a string of characters
 C
@@ -273,6 +274,13 @@ C        CALLS:  PLCHARABS
 C----------------------------------------------------------------
       CHARACTER*1 MINUS, POINT, CHDIG
       DATA MINUS/'-'/, POINT/'.'/
+C
+C---- Infinity never decreases in the digit-count loop below. Reject
+C     non-finite input before rounding or integer conversion as well.
+      IF (.NOT.IEEE_IS_FINITE(FPN)) THEN
+        CALL PLCHARABS(XC,YC,CHX,'invalid',ANGLE,7)
+        RETURN
+      ENDIF
 C
       IZERO = ichar('0')
 C

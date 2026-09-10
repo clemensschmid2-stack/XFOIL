@@ -17,3 +17,6 @@
 /bin/xfoil
 /bin/pplot
 /bin/pxplot
+
+# Local compiler work and installed runtime; never publish generated build trees.
+/build-windows/

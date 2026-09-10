@@ -619,6 +619,9 @@ C
 C
 C- - - - - - - - - - - - - - - - - - 
 C
+C----- Graphics disabled means no sequence plot work, including labels.
+C      Opening no window alone does not disable plot number formatting.
+       IF(IDEV.NE.0) THEN
 C----- initialize plot
        CALL PLTINI
 C
@@ -661,6 +664,7 @@ C
 C------ set label y position
         YL = YL - 0.2*CH
        ENDIF
+       ENDIF
 C
 C----- initialize unconverged-point counter
        ISEQEX = 0
@@ -696,6 +700,7 @@ ccc      IF( LVISC .AND. LPACC .AND. LVCONV ) THEN
           CALL PLXADD(LUPLX,IPACT)
          ENDIF
 C
+         IF(IDEV.NE.0) THEN
          IF(LPPSHO) THEN
           CALL PLTINI
 ccc          CALL PLOTABS(0.5,0.5,-3)
@@ -738,6 +743,7 @@ C--------- Plot inviscid -Cp distribution on airfoil
          ENDIF
 C
          CALL PLFLUSH
+         ENDIF
 c###
 ccc    call dcpout
 C
@@ -3125,10 +3131,12 @@ C
 
 
       SUBROUTINE VISCAL(NITER1)
+      USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
 C----------------------------------------
 C     Converges viscous operating point
 C----------------------------------------
       INCLUDE 'XFOIL.INC'
+      LOGICAL LFINITE
 C
 C---- convergence tolerance
       DATA EPS1 / 1.0E-4 /
@@ -3199,6 +3207,7 @@ C---- set up source influence matrix if it doesn't exist
       IF(.NOT.LWDIJ .OR. .NOT.LADIJ) CALL QDCALC
 C
 C---- Newton iteration for entire BL solution
+      LVCONV = .FALSE.
       IF(NITER.EQ.0) CALL ASKI('Enter number of iterations^',NITER)
       WRITE(*,*)
       WRITE(*,*) 'Solving BL system ...'
@@ -3236,6 +3245,28 @@ C------ set updated CL,CD
         CALL CLCALC(N,X,Y,GAM,GAM_A,ALFA,MINF,QINF, XCMREF,YCMREF,
      &              CL,CM,CDP,CL_ALF,CL_MSQ)
         CALL CDCALC
+C
+C------ A small residual does not make non-finite coefficients valid.
+C       Discard the point and the corrupt BL state; the next requested
+C       angle starts with a fresh BL. ASEQ still counts this as a failure.
+        LFINITE = ALL(IEEE_IS_FINITE((/ALFA,CL,CM,CD,CDP,CDF,
+     &                                RMSBL,RMXBL/)))
+        DO IS = 1, 2
+         LFINITE = LFINITE .AND. IEEE_IS_FINITE(XOCTR(IS))
+     &                    .AND. IEEE_IS_FINITE(TINDEX(IS))
+     &     .AND. ALL(IEEE_IS_FINITE(UEDG(1:NBL(IS),IS)))
+     &     .AND. ALL(IEEE_IS_FINITE(THET(1:NBL(IS),IS)))
+     &     .AND. ALL(IEEE_IS_FINITE(DSTR(1:NBL(IS),IS)))
+     &     .AND. ALL(IEEE_IS_FINITE(CTAU(1:NBL(IS),IS)))
+        ENDDO
+        IF(.NOT.LFINITE) THEN
+         WRITE(*,*) 'VISCAL: non-finite solution rejected at alpha=',
+     &               ALFA/DTOR
+         LVCONV = .FALSE.
+         LBLINI = .FALSE.
+         LIPAN = .FALSE.
+         RETURN
+        ENDIF
 C
 C------ display changes and test for convergence
         IF(RLX.LT.1.0) 
