@@ -551,69 +551,86 @@ C..........................................
 
 
       SUBROUTINE PLRADD(LU,IP)
+      USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
       INCLUDE 'XFOIL.INC'
       LOGICAL ERROR
+      REAL CPNEW(1,IPTOT), CSPNEW(1,ISX,JPTOT)
+      REAL CENNEW(1,1,KPTOT)
+      INTEGER IOS
 C
-cc      WRITE(*,1000) CL, CD, CM
-cc 1000 FORMAT(/' CL =', F7.3, '    Cd =', F9.5, '    Cm =', F8.4)
-C
-C---- add point to storage arrays
-      IF(IP.EQ.0) THEN
+      IF(IP.LE.0 .OR. IP.GT.NPX) THEN
        WRITE(*,*) 'No active polar is declared. Point not stored.'
-C
-      ELSE
-       IF(NAPOL(IP).EQ.NAX) THEN
-        WRITE(*,*) 'Polar storage arrays full. Point not stored'
-C
-       ELSE
-        NAPOL(IP) = NAPOL(IP)+1
-C
-C------ store current point
-        IF(LVISC) THEN
-         CDTOT = CD
-         CDV = CD
-         RE = REINF
-        ELSE
-         CDTOT = 0.
-         CDV = 0.
-         RE = 0.
-        ENDIF
-C
-        IA = NAPOL(IP)
-        CPOL(IA,IAL,IP) = ADEG
-        CPOL(IA,ICL,IP) = CL
-        CPOL(IA,ICD,IP) = CDTOT
-        CPOL(IA,ICM,IP) = CM
-        CPOL(IA,ICP,IP) = CDP
-        CPOL(IA,ICV,IP) = CDV
-        CPOL(IA,IMA,IP) = MINF
-        CPOL(IA,IRE,IP) = RE
-        DO IS = 1, 2
-          IF(LVISC) THEN
-           XOCT = XOCTR(IS)
-          ELSE
-           XOCT = 0.
-          ENDIF
-          CPOLSD(IA,IS,JNC,IP) = ACRIT(IS)
-          CPOLSD(IA,IS,JTP,IP) = XSTRIP(IS)
-          CPOLSD(IA,IS,JTN,IP) = XOCT
-          CPOLSD(IA,IS,JTI,IP) = TINDEX(IS)
-        ENDDO
-C
-        IF(LFLAP) THEN
-         CALL MHINGE
-         CPOL(IA,ICH,IP) = HMOM
-        ELSE
-         CPOL(IA,ICH,IP) = 0.
-        ENDIF
-        CPOL(IA,IMC,IP) = CPMN
-C
-        WRITE(*,1100) IP
- 1100   FORMAT(/' Point added to stored polar', I3)
-       ENDIF
+       RETURN
       ENDIF
 C
-C---- add point to save file
+C---- assemble the current solution independently of polar storage.
+C     Disk output must never read the last stored row when NAX is full.
+      DO ID = 1, IPTOT
+       CPNEW(1,ID) = 0.
+      ENDDO
+      DO ID = 1, JPTOT
+       DO IS = 1, ISX
+        CSPNEW(1,IS,ID) = 0.
+       ENDDO
+      ENDDO
+      DO ID = 1, KPTOT
+       CENNEW(1,1,ID) = 0.
+      ENDDO
+C
+      CPNEW(1,IAL) = ADEG
+      CPNEW(1,ICL) = CL
+      CPNEW(1,ICM) = CM
+      CPNEW(1,ICP) = CDP
+      CPNEW(1,IMA) = MINF
+      IF(LVISC) THEN
+       CPNEW(1,ICD) = CD
+       CPNEW(1,ICV) = CD
+       CPNEW(1,IRE) = REINF
+      ENDIF
+      DO IS = 1, 2
+       IF(LVISC) CSPNEW(1,IS,JTN) = XOCTR(IS)
+       CSPNEW(1,IS,JNC) = ACRIT(IS)
+       CSPNEW(1,IS,JTP) = XSTRIP(IS)
+       CSPNEW(1,IS,JTI) = TINDEX(IS)
+      ENDDO
+      IF(LFLAP) THEN
+       CALL MHINGE
+       CPNEW(1,ICH) = HMOM
+      ENDIF
+      CPNEW(1,IMC) = CPMN
+C
+C---- Never publish NaN/Inf, even if a caller marked the solve converged.
+      IF(.NOT.ALL(IEEE_IS_FINITE(CPNEW)) .OR.
+     &   .NOT.ALL(IEEE_IS_FINITE(CSPNEW))) THEN
+       WRITE(*,*) 'PLRADD: non-finite polar point rejected at alpha=',
+     &             ADEG
+       LVCONV = .FALSE.
+       RETURN
+      ENDIF
+C
+C---- retain in-memory points while capacity remains. A full polar still
+C     streams new solutions to the PACC save file below.
+      IF(NAPOL(IP).GE.NAX) THEN
+       WRITE(*,*) 'Polar storage arrays full. Point not stored in memory'
+      ELSE
+       NAPOL(IP) = NAPOL(IP)+1
+       IA = NAPOL(IP)
+       DO ID = 1, IPTOT
+        CPOL(IA,ID,IP) = CPNEW(1,ID)
+       ENDDO
+       DO ID = 1, JPTOT
+        DO IS = 1, ISX
+         CPOLSD(IA,IS,ID,IP) = CSPNEW(1,IS,ID)
+        ENDDO
+       ENDDO
+       DO ID = 1, KPTOT
+        CPOLEL(IA,1,ID,IP) = CENNEW(1,1,ID)
+       ENDDO
+       WRITE(*,1100) IP
+ 1100  FORMAT(/' Point added to stored polar', I3)
+      ENDIF
+C
+C---- append the current point, including after in-memory overflow.
       IF(LPFILE) THEN
        NIPOL = NIPOL0
        IF(LCMINP) THEN
@@ -624,31 +641,33 @@ C---- add point to save file
         NIPOL = NIPOL + 1
         IPOL(NIPOL) = ICH
        ENDIF
-C
-       OPEN(LU,FILE=PFNAME(IP),STATUS='OLD',ACCESS='APPEND')
-ccc       CALL BOTTOM(LU)
-       IA = NAPOL(IP)
+       OPEN(LU,FILE=PFNAME(IP),STATUS='OLD',ACCESS='APPEND',
+     &      IOSTAT=IOS)
+       IF(IOS.NE.0) THEN
+        NIPOL = NIPOL0
+        WRITE(*,*) 'Could not open polar save file. Point not written'
+        RETURN
+       ENDIF
        CALL POLWRIT(LU,' ',ERROR, .FALSE.,
-     &              NAX, IA,IA, CPOL(1,1,IP), IPOL,NIPOL,
+     &              1, 1,1, CPNEW, IPOL,NIPOL,
      &              REYNP1(IP),MACHP1(IP),ACRITP(1,IP),XSTRIPP(1,IP),
      &              PTRATP(IP),ETAPP(IP),
      &              NAMEPOL(IP), IRETYP(IP),IMATYP(IP),
-     &              1,1,CPOLSD(1,1,1,IP), JPOL,NJPOL,
-     &                  CPOLSD(1,1,1,IP), KPOL,NKPOL,
+     &              1,1,CSPNEW, JPOL,NJPOL,
+     &                  CENNEW, KPOL,NKPOL,
      &              'XFOIL',VERSION, .FALSE. )
        CLOSE(LU)
        NIPOL = NIPOL0
-       WRITE(*,1200) PFNAME(IP)
- 1200  FORMAT(' Point written to save file  ', A48)
+       IF(ERROR) THEN
+        WRITE(*,*) 'Polar save file write failed. Point not written'
+       ELSE
+        WRITE(*,1200) PFNAME(IP)
+ 1200   FORMAT(' Point written to save file  ', A48)
+       ENDIF
       ELSE
        WRITE(*,1300)
  1300  FORMAT(' Save file unspecified or not available')
       ENDIF
-C
-cccC---- sort polar in increasing alpha
-ccc      IDSORT = IAL
-ccc      CALL PLRSRT(IP,IDSORT)
-C
       RETURN
       END ! PLRADD
  
@@ -658,6 +677,9 @@ C
       INTEGER NSIDE(2)
 C
       DIMENSION XX(IVX,2), CP(IVX,2), CF(IVX,2)
+C
+C---- PLRADD can invalidate a point before this paired dump call.
+      IF(LVISC .AND. .NOT.LVCONV) RETURN
 C
       IF(.NOT.LPFILX) THEN
        WRITE(*,1050)

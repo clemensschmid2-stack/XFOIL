@@ -1273,10 +1273,8 @@ C------------------------------------------------------------------
       INCLUDE 'XFOIL.INC'
       REAL UNEW(IVX,2), U_AC(IVX,2)
       REAL QNEW(IQX),   Q_AC(IQX)
-      EQUIVALENCE (VA(1,1,1), UNEW(1,1)) ,
-     &            (VB(1,1,1), QNEW(1)  )
-      EQUIVALENCE (VA(1,1,IVX), U_AC(1,1)) ,
-     &            (VB(1,1,IVX), Q_AC(1)  )
+C  Independent scratch arrays: the legacy VA/VB overlays extend beyond
+C  their storage when IVX is sized for a full surface on either BL side.
       REAL MSQ
 C
 C---- max allowable alpha changes per iteration

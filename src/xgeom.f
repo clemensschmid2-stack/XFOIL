@@ -156,10 +156,7 @@ C----------------------------------------------------------
 C     Finds "nose" of airfoil where curvature is a maximum
 C----------------------------------------------------------
 C
-      PARAMETER (NMAX=500)
-      DIMENSION A(NMAX), B(NMAX), C(NMAX), CV(NMAX)
-C
-      IF(N.GT.NMAX) STOP 'NSFIND: Local array overflow. Increase NMAX.'
+      DIMENSION A(N), B(N), C(N), CV(N)
 C
 C---- set up curvature array
       DO 3 I=1, N
@@ -339,10 +336,9 @@ C
      &             THICK,CAMBR)
       DIMENSION X(*), XP(*), Y(*), YP(*), S(*), T(*)
 C
-      PARAMETER (IBX=600)
       DIMENSION
-     &     XCAM(2*IBX), YCAM(2*IBX), YCAMP(2*IBX),
-     &     XTHK(2*IBX), YTHK(2*IBX), YTHKP(2*IBX)
+     &     XCAM(2*N), YCAM(2*N), YCAMP(2*N),
+     &     XTHK(2*N), YTHK(2*N), YTHKP(2*N)
 C------------------------------------------------------
 C     Sets geometric parameters for airfoil shape
 C------------------------------------------------------

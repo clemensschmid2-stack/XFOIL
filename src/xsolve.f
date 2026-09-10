@@ -189,10 +189,9 @@ C     *******************************************************
 C
       DIMENSION A(NSIZ,NSIZ), INDX(NSIZ)
 C
-      PARAMETER (NVX=515)
-      DIMENSION VV(NVX)
+      DIMENSION VV(NSIZ)
 C
-      IF(N.GT.NVX) STOP 'LUDCMP: Array overflow. Increase NVX.'
+      IF(N.GT.NSIZ) STOP 'LUDCMP: Matrix dimension exceeds NSIZ.'
 C
       DO 12 I=1, N
         AAMAX = 0.
