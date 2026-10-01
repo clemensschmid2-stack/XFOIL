@@ -20,3 +20,13 @@
 
 # Local compiler work and installed runtime; never publish generated build trees.
 /build-windows/
+
+# Owned validation artifacts and intentional fixed reference binaries.
+/build/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+!tests/references/xfoil-6.996-win64/*.exe
+!tests/references/xfoil-6.996-win64/*.dll
+
+!tests/references/xfoil-6.996-win64/licenses/gcc-COPYING.LIB
