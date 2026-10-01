@@ -1,0 +1,4 @@
+# Preserve immutable reference binaries, receipts, and upstream notices.
+tests/references/** -text
+tests/references/** whitespace=cr-at-eol
+tests/references/**/licenses/* whitespace=cr-at-eol,-blank-at-eof

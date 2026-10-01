@@ -17,6 +17,12 @@ The authoritative XFOIL project page is:
 - `xfoil_doc.txt`: upstream user guide
 - `README`: upstream build and source notes
 
+## Build and validation
+
+`python scripts/build_xfoil.py` builds the Windows candidate. Use `--build-dir`
+for isolated validation builds. The [owned test suite](tests/README.md) contains
+the fixed-reference parity/capacity checks and their regression tests.
+
 ## Licensing
 
 The XFOIL core source is distributed under the GNU General Public License, version 2 or later. See [COPYING](COPYING).
